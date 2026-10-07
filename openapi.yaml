@@ -1,0 +1,195 @@
+openapi: 3.0.1
+info:
+  title: Книжный магазин — REST API
+  description: |
+    Лабораторная работа №2. REST/JSON сервис для управления каталогом книжного магазина.
+    Реализует полный набор CRUD операций: создание, чтение, обновление и удаление книг.
+  version: 1.0.0
+  contact:
+    email: student@spbguap.ru
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8080
+    description: Локальный сервер разработки
+
+tags:
+  - name: Книги
+    description: API для управления каталогом книг книжного магазина
+
+paths:
+
+  /api/books:
+    post:
+      tags:
+        - Книги
+      summary: Добавить книгу
+      description: Создаёт новую запись о книге в каталоге магазина. Возвращает созданный объект с присвоенным ID.
+      operationId: createBook
+      requestBody:
+        description: Данные новой книги (поле id игнорируется — назначается автоматически)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+            example:
+              title: "Мёртвые души"
+              author: "Николай Гоголь"
+              genre: "Поэма"
+              year: 1842
+              price: 399.00
+              stock: 7
+      responses:
+        '201':
+          description: Книга успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Некорректные входные данные
+
+    get:
+      tags:
+        - Книги
+      summary: Получить все книги
+      description: Возвращает полный список книг из каталога магазина.
+      operationId: getAllBooks
+      responses:
+        '200':
+          description: Список книг успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+
+  /api/books/{id}:
+    get:
+      tags:
+        - Книги
+      summary: Получить книгу по ID
+      description: Возвращает данные конкретной книги по её уникальному идентификатору.
+      operationId: getBookById
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор книги
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Книга найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Книга с указанным ID не найдена
+
+    put:
+      tags:
+        - Книги
+      summary: Обновить книгу
+      description: Полностью заменяет данные книги с указанным ID. Все поля должны быть переданы в теле запроса.
+      operationId: updateBook
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор книги
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      requestBody:
+        description: Новые данные книги
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+            example:
+              title: "Война и мир (обновлённое издание)"
+              author: "Лев Толстой"
+              genre: "Роман-эпопея"
+              year: 2024
+              price: 790.00
+              stock: 3
+      responses:
+        '200':
+          description: Книга успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Книга с указанным ID не найдена
+
+    delete:
+      tags:
+        - Книги
+      summary: Удалить книгу
+      description: Удаляет книгу с указанным ID из каталога магазина.
+      operationId: deleteBook
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор книги
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '204':
+          description: Книга успешно удалена
+        '404':
+          description: Книга с указанным ID не найдена
+
+components:
+  schemas:
+    Book:
+      type: object
+      description: Модель книги в каталоге магазина
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Уникальный идентификатор книги (назначается сервером)
+          readOnly: true
+          example: 1
+        title:
+          type: string
+          description: Название книги
+          example: "Война и мир"
+        author:
+          type: string
+          description: Автор книги
+          example: "Лев Толстой"
+        genre:
+          type: string
+          description: Жанр книги
+          example: "Роман"
+        year:
+          type: integer
+          format: int32
+          description: Год издания
+          example: 1869
+        price:
+          type: number
+          format: double
+          description: Цена книги в рублях
+          example: 590.00
+        stock:
+          type: integer
+          format: int32
+          description: Количество экземпляров на складе
+          example: 10
