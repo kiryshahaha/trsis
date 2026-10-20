@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -18,14 +19,42 @@ class BookRestControllerTest {
     private MockMvc mockMvc;
 
     @Test
-    void shouldReturnAllBooks() throws Exception {
+    void unauthenticatedUserShouldBeRedirectedToLogin() throws Exception {
+        mockMvc.perform(get("/api/books"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    @WithMockUser(username = "user", roles = {"USER"})
+    void shouldReturnAllBooksWhenAuthenticated() throws Exception {
         mockMvc.perform(get("/api/books"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     @Test
-    void shouldCreateBook() throws Exception {
+    @WithMockUser(username = "user", roles = {"USER"})
+    void userCannotCreateBookForbidden() throws Exception {
+        String json = """
+                {
+                  "title": "Запрещённая книга",
+                  "author": "Автор",
+                  "genre": "Жанр",
+                  "year": 2024,
+                  "price": 100.0,
+                  "stock": 1
+                }
+                """;
+        mockMvc.perform(post("/api/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void adminCanCreateBook() throws Exception {
         String json = """
                 {
                   "title": "Тест книга",
@@ -45,6 +74,7 @@ class BookRestControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user", roles = {"USER"})
     void shouldReturnBookById() throws Exception {
         mockMvc.perform(get("/api/books/1"))
                 .andExpect(status().isOk())
@@ -52,13 +82,15 @@ class BookRestControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user", roles = {"USER"})
     void shouldReturn404ForMissingBook() throws Exception {
         mockMvc.perform(get("/api/books/9999"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void shouldUpdateBook() throws Exception {
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void adminCanUpdateBook() throws Exception {
         String json = """
                 {
                   "title": "Обновлённое название",
@@ -77,8 +109,8 @@ class BookRestControllerTest {
     }
 
     @Test
-    void shouldDeleteBook() throws Exception {
-        // Сначала создаём книгу, потом удаляем
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    void adminCanDeleteBook() throws Exception {
         String json = """
                 {"title":"Удалить меня","author":"А","genre":"Б","year":2000,"price":1.0,"stock":1}
                 """;
@@ -88,7 +120,6 @@ class BookRestControllerTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        // Извлекаем id из ответа
         long id = com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
                 .readTree(response).get("id").asLong();
 

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      ng-app="bookstoreApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Книжный магазин — Панель управления</title>
+
+    <!-- CSRF meta-теги для AJAX/AngularJS (методичка стр. 50) -->
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <!-- jQuery & AngularJS (методичка стр. 34-35, 50) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.5/angular.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px 30px;
+            background-color: #fafafa;
+            color: #222;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .user-panel {
+            font-size: 13px;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ccc;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            background: #e9e9e9;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .tab-btn.active {
+            background: #fff;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+            color: #0066cc;
+        }
+        .container {
+            display: flex;
+            gap: 25px;
+        }
+        .form-box {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+            max-width: 340px;
+        }
+        .table-box {
+            flex: 2;
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+        }
+        .full-box {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+        }
+        h3 {
+            margin-top: 0;
+            font-size: 16px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+        }
+        .field {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 3px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 5px;
+            border: 1px solid #aaa;
+            font-size: 13px;
+        }
+        button, input[type="submit"] {
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-submit {
+            background-color: #28a745;
+            color: white;
+            border: 1px solid #218838;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .btn-logout {
+            background: #e0e0e0;
+            border: 1px solid #999;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        .msg {
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            background: #eef;
+            font-size: 13px;
+        }
+        .msg-error {
+            background: #fee;
+            border-color: #f99;
+            color: #900;
+        }
+        .msg-success {
+            background: #efe;
+            border-color: #9f9;
+            color: #060;
+        }
+        .search-box {
+            margin-bottom: 10px;
+        }
+        .action-btn {
+            font-size: 11px;
+            padding: 2px 6px;
+            margin-right: 2px;
+        }
+        .badge-audit {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+            border-radius: 3px;
+        }
+        .badge-create { background-color: #28a745; }
+        .badge-update { background-color: #ffc107; color: #000; }
+        .badge-delete { background-color: #dc3545; }
+        .badge-access { background-color: #6c757d; }
+    </style>
+</head>
+<body ng-controller="BookController">
+
+<!-- Верхняя панель с кнопкой Logout (методичка стр. 50) -->
+<div class="header-bar">
+    <div class="header-title">Книжный магазин (Вариант 1 / 26)</div>
+    <div class="user-panel">
+        <span sec:authorize="isAuthenticated()">
+            Вы вошли как: <b><span sec:authentication="name">User</span></b>
+            (роль: <span sec:authentication="principal.authorities">ROLE</span>)
+        </span>
+
+        <!-- Форма Logout с методом POST (методичка стр. 50) -->
+        <form name="logoutForm" th:action="@{/logout}" method="post" style="display: inline; margin-left: 10px;">
+            <input type="submit" class="btn-logout" value="Sign Out"/>
+        </form>
+    </div>
+</div>
+
+<!-- Вкладки (Табы) -->
+<div class="tabs">
+    <button class="tab-btn" ng-class="{'active': currentTab === 'catalog'}" ng-click="setTab('catalog')">
+        Каталог книг
+    </button>
+    <button class="tab-btn" ng-class="{'active': currentTab === 'publishers'}" ng-click="setTab('publishers')">
+        Издательства (JPA)
+    </button>
+    <button sec:authorize="hasRole('ADMIN')" class="tab-btn" ng-class="{'active': currentTab === 'audit'}" ng-click="setTab('audit')">
+        Журнал аудита (ADMIN)
+    </button>
+</div>
+
+<!-- Блок сообщений -->
+<div ng-if="message" class="msg" ng-class="{'msg-error': isError, 'msg-success': !isError}">
+    {{message}}
+    <a href="#" ng-click="message=''" style="float: right; color: #666; text-decoration: none;">[x]</a>
+</div>
+
+<!-- ТАБ 1: КАТАЛОГ КНИГ -->
+<div ng-show="currentTab === 'catalog'" class="container">
+    <!-- Левая колонка: Форма добавления/редактирования -->
+    <div class="form-box">
+        <h3>{{isEditing ? 'Редактирование книги' : 'Добавить книгу'}}</h3>
+
+        <form ng-submit="saveBook()">
+            <div class="field">
+                <label>Название: *</label>
+                <input type="text" ng-model="currentBook.title" required placeholder="Название книги">
+            </div>
+            <div class="field">
+                <label>Автор: *</label>
+                <input type="text" ng-model="currentBook.author" required placeholder="Автор">
+            </div>
+            <div class="field">
+                <label>Жанр:</label>
+                <input type="text" ng-model="currentBook.genre" placeholder="Жанр">
+            </div>
+            <div class="field">
+                <label>Год издания:</label>
+                <input type="number" ng-model="currentBook.year" placeholder="1869">
+            </div>
+            <div class="field">
+                <label>Цена (руб):</label>
+                <input type="number" step="0.01" ng-model="currentBook.price" placeholder="590.00">
+            </div>
+            <div class="field">
+                <label>Издательство (FK):</label>
+                <select ng-model="currentBook.publisherId" style="width: 100%; padding: 5px; border: 1px solid #aaa;">
+                    <option value="">-- Выберите издательство --</option>
+                    <option ng-repeat="p in publishers" ng-value="p.id">{{p.name}} ({{p.city}})</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Остаток на складе:</label>
+                <input type="number" ng-model="currentBook.stock" placeholder="10">
+            </div>
+
+            <!-- Разграничение прав -->
+            <div sec:authorize="hasRole('ADMIN')">
+                <button type="submit" class="btn-submit">{{isEditing ? 'Сохранить изменения' : 'Добавить'}}</button>
+                <button type="button" ng-if="isEditing" ng-click="resetForm()" style="width: 100%; margin-top: 5px;">Отмена</button>
+            </div>
+            <div sec:authorize="!hasRole('ADMIN')" style="margin-top: 8px;">
+                <button type="button" disabled style="width: 100%; color: #888;">Только для ADMIN</button>
+                <small style="color: #666; display: block; margin-top: 4px;">У вас роль USER (только чтение).</small>
+            </div>
+        </form>
+    </div>
+
+    <!-- Правая колонка: Каталог и удаление -->
+    <div class="table-box">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="border: none; margin: 0;">Каталог книг в наличии</h3>
+            <button ng-click="loadBooks()">Обновить</button>
+        </div>
+
+        <div class="search-box" style="margin-top: 10px;">
+            <input type="text" ng-model="searchQuery" placeholder="Фильтр по таблице в реальном времени...">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Автор</th>
+                    <th>Жанр</th>
+                    <th>Издательство</th>
+                    <th>Год</th>
+                    <th>Цена</th>
+                    <th>Остаток</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-if="books.length === 0">
+                    <td colspan="9" style="text-align: center; color: #888;">Книг пока нет.</td>
+                </tr>
+                <tr ng-repeat="b in books | filter:searchQuery">
+                    <td>#{{b.id}}</td>
+                    <td><b>{{b.title}}</b></td>
+                    <td>{{b.author}}</td>
+                    <td>{{b.genre || '—'}}</td>
+                    <td><span style="color: #0066cc;">{{b.publisherName || '—'}}</span></td>
+                    <td>{{b.year || '—'}}</td>
+                    <td>{{b.price}} руб.</td>
+                    <td>{{b.stock}} шт.</td>
+                    <td>
+                        <span sec:authorize="hasRole('ADMIN')">
+                            <button class="action-btn" ng-click="editBook(b)">Изм</button>
+                            <button class="action-btn" ng-click="deleteBook(b.id)" style="color: #900;">Удал</button>
+                        </span>
+                        <span sec:authorize="!hasRole('ADMIN')" style="color: #888; font-size: 11px;">
+                            только чтение
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+            Всего записей: {{books.length}} | REST API: <code>/api/books</code>
+        </div>
+    </div>
+</div>
+
+<!-- ТАБ 2: ИЗДАТЕЛЬСТВА (JPA / Hibernate) -->
+<div ng-show="currentTab === 'publishers'" class="container">
+    <div class="form-box">
+        <h3>{{isEditingPub ? 'Редактировать издательство' : 'Добавить издательство'}}</h3>
+        <form ng-submit="savePublisher()">
+            <div class="field">
+                <label>Наименование: *</label>
+                <input type="text" ng-model="currentPub.name" required placeholder="Например, АСТ">
+            </div>
+            <div class="field">
+                <label>Город:</label>
+                <input type="text" ng-model="currentPub.city" placeholder="Москва">
+            </div>
+            <div class="field">
+                <label>Телефон:</label>
+                <input type="text" ng-model="currentPub.contactPhone" placeholder="+7 (495) ...">
+            </div>
+            <div sec:authorize="hasRole('ADMIN')">
+                <button type="submit" class="btn-submit">{{isEditingPub ? 'Сохранить изменения' : 'Добавить'}}</button>
+                <button type="button" ng-if="isEditingPub" ng-click="resetPubForm()" style="width: 100%; margin-top: 5px;">Отмена</button>
+            </div>
+            <div sec:authorize="!hasRole('ADMIN')" style="margin-top: 8px;">
+                <button type="button" disabled style="width: 100%; color: #888;">Только для ADMIN</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-box">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="border: none; margin: 0;">Справочник издательств (Таблица JPA 2)</h3>
+            <button ng-click="loadPublishers()">Обновить</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Наименование</th>
+                    <th>Город</th>
+                    <th>Телефон</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="p in publishers">
+                    <td>#{{p.id}}</td>
+                    <td><b>{{p.name}}</b></td>
+                    <td>{{p.city || '—'}}</td>
+                    <td>{{p.contactPhone || '—'}}</td>
+                    <td>
+                        <span sec:authorize="hasRole('ADMIN')">
+                            <button class="action-btn" ng-click="editPub(p)">Изм</button>
+                            <button class="action-btn" ng-click="deletePub(p.id)" style="color: #900;">Удал</button>
+                        </span>
+                        <span sec:authorize="!hasRole('ADMIN')" style="color: #888; font-size: 11px;">чтение</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+            Всего издательств: {{publishers.length}} | REST API: <code>/api/publishers</code>
+        </div>
+    </div>
+</div>
+
+<!-- ТАБ 3: ЖУРНАЛ АУДИТА (только ADMIN) -->
+<div ng-show="currentTab === 'audit'" sec:authorize="hasRole('ADMIN')" class="full-box">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="border: none; margin: 0;">Журнал аудита безопасности (Audit Log)</h3>
+        <button ng-click="loadAuditLogs()">Обновить журнал</button>
+    </div>
+
+    <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+        Все операции добавления, обновления и удаления книг автоматически фиксируются сервисом <code>AuditService</code> и доступны для контроля администратору.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 150px;">Время</th>
+                <th style="width: 100px;">Пользователь</th>
+                <th style="width: 90px;">Действие</th>
+                <th style="width: 90px;">Сущность</th>
+                <th>Подробности</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-if="auditLogs.length === 0">
+                <td colspan="5" style="text-align: center; color: #888;">Записей аудита пока нет. Выполните действие в каталоге (добавление/изменение/удаление).</td>
+            </tr>
+            <tr ng-repeat="log in auditLogs">
+                <td>{{log.timestamp}}</td>
+                <td><b>{{log.user}}</b></td>
+                <td>
+                    <span class="badge-audit" ng-class="{
+                        'badge-create': log.action === 'CREATE',
+                        'badge-update': log.action === 'UPDATE',
+                        'badge-delete': log.action === 'DELETE',
+                        'badge-access': log.action === 'ACCESS_DENIED'
+                    }">{{log.action}}</span>
+                </td>
+                <td>{{log.entity}}</td>
+                <td>{{log.details}}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+        Всего записей аудита: {{auditLogs.length}} | REST API: <code>/api/audit</code>
+    </div>
+</div>
+
+<!-- AngularJS логика (методичка стр. 35-36, 50) -->
+<script>
+    var app = angular.module('bookstoreApp', []).config(function ($httpProvider) {
+        var csrftoken = $("meta[name='_csrf']").attr("content");
+        var csrfheader = $("meta[name='_csrf_header']").attr("content");
+        if (csrftoken && csrfheader) {
+            $httpProvider.defaults.headers.common["X-CSRF-TOKEN"] = csrftoken;
+        }
+    });
+
+    app.controller('BookController', function ($scope, $http) {
+        $scope.currentTab = 'catalog';
+        $scope.books = [];
+        $scope.publishers = [];
+        $scope.auditLogs = [];
+        $scope.currentBook = {};
+        $scope.currentPub = {};
+        $scope.isEditing = false;
+        $scope.isEditingPub = false;
+        $scope.message = '';
+        $scope.isError = false;
+
+        var apiUrl = '/api/books';
+        var pubUrl = '/api/publishers';
+        var auditUrl = '/api/audit';
+
+        $scope.setTab = function (tab) {
+            $scope.currentTab = tab;
+            if (tab === 'audit') {
+                $scope.loadAuditLogs();
+            } else if (tab === 'publishers') {
+                $scope.loadPublishers();
+            } else {
+                $scope.loadBooks();
+                $scope.loadPublishers();
+            }
+        };
+
+        $scope.showMessage = function (msg, isErr) {
+            $scope.message = msg;
+            $scope.isError = !!isErr;
+        };
+
+        $scope.loadPublishers = function () {
+            $http.get(pubUrl).then(
+                function (response) {
+                    $scope.publishers = response.data;
+                },
+                function (error) {
+                    console.error('Ошибка загрузки издательств', error);
+                }
+            );
+        };
+
+        $scope.loadBooks = function () {
+            $http.get(apiUrl).then(
+                function (response) {
+                    $scope.books = response.data;
+                },
+                function (error) {
+                    $scope.showMessage('Ошибка загрузки данных: ' + error.statusText, true);
+                }
+            );
+        };
+
+        $scope.savePublisher = function () {
+            if ($scope.isEditingPub) {
+                $http.put(pubUrl + '/' + $scope.currentPub.id, $scope.currentPub).then(
+                    function (res) {
+                        $scope.showMessage('Издательство «' + res.data.name + '» обновлено.', false);
+                        $scope.resetPubForm();
+                        $scope.loadPublishers();
+                    },
+                    function (err) {
+                        $scope.showMessage('Ошибка обновления издательства: ' + err.status, true);
+                    }
+                );
+            } else {
+                $http.post(pubUrl, $scope.currentPub).then(
+                    function (res) {
+                        $scope.showMessage('Издательство «' + res.data.name + '» добавлено.', false);
+                        $scope.resetPubForm();
+                        $scope.loadPublishers();
+                    },
+                    function (err) {
+                        $scope.showMessage('Ошибка добавления издательства: ' + err.status, true);
+                    }
+                );
+            }
+        };
+
+        $scope.editPub = function (p) {
+            $scope.currentPub = angular.copy(p);
+            $scope.isEditingPub = true;
+        };
+
+        $scope.resetPubForm = function () {
+            $scope.currentPub = {};
+            $scope.isEditingPub = false;
+        };
+
+        $scope.deletePub = function (id) {
+            if (!confirm('Удалить издательство #' + id + '?')) return;
+            $http.delete(pubUrl + '/' + id).then(
+                function () {
+                    $scope.showMessage('Издательство #' + id + ' удалено.', false);
+                    $scope.loadPublishers();
+                    $scope.loadBooks();
+                },
+                function (err) {
+                    $scope.showMessage('Ошибка удаления издательства (возможно, с ним связаны книги).', true);
+                }
+            );
+        };
+
+        $scope.loadAuditLogs = function () {
+            $http.get(auditUrl).then(
+                function (response) {
+                    $scope.auditLogs = response.data;
+                },
+                function (error) {
+                    $scope.showMessage('Ошибка загрузки аудита: ' + error.statusText, true);
+                }
+            );
+        };
+
+        $scope.editBook = function (book) {
+            $scope.currentBook = angular.copy(book);
+            $scope.isEditing = true;
+        };
+
+        $scope.resetForm = function () {
+            $scope.currentBook = {};
+            $scope.isEditing = false;
+        };
+
+        $scope.saveBook = function () {
+            if ($scope.isEditing) {
+                $http.put(apiUrl + '/' + $scope.currentBook.id, $scope.currentBook).then(
+                    function (response) {
+                        $scope.showMessage('Книга «' + response.data.title + '» обновлена.', false);
+                        $scope.resetForm();
+                        $scope.loadBooks();
+                    },
+                    function (error) {
+                        $scope.showMessage('Ошибка обновления (код ' + error.status + '). Требуются права ADMIN.', true);
+                    }
+                );
+            } else {
+                $http.post(apiUrl, $scope.currentBook).then(
+                    function (response) {
+                        $scope.showMessage('Книга «' + response.data.title + '» добавлена.', false);
+                        $scope.resetForm();
+                        $scope.loadBooks();
+                    },
+                    function (error) {
+                        $scope.showMessage('Ошибка добавления (код ' + error.status + '). Добавление разрешено только для ADMIN.', true);
+                    }
+                );
+            }
+        };
+
+        $scope.deleteBook = function (id) {
+            if (!confirm('Удалить книгу #' + id + '?')) return;
+            $http.delete(apiUrl + '/' + id).then(
+                function () {
+                    $scope.showMessage('Книга #' + id + ' удалена.', false);
+                    $scope.loadBooks();
+                },
+                function (error) {
+                    $scope.showMessage('Ошибка удаления (код ' + error.status + '). Требуются права ADMIN.', true);
+                }
+            );
+        };
+
+        $scope.loadBooks();
+        $scope.loadPublishers();
+    });
+</script>
+
+</body>
+</html>

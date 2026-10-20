@@ -12,21 +12,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.spbguap.bookstore.model.Book;
+import ru.spbguap.bookstore.dto.BookDto;
 import ru.spbguap.bookstore.service.BookService;
 
 import java.util.List;
 
 /**
- * REST-контроллер для работы с книгами книжного магазина.
- * Реализует полный набор CRUD-операций.
+ * REST-контроллер для работы с книгами книжного магазина на базе Spring Data JPA.
+ * Реализует полный набор CRUD-операций с использованием паттерна DTO.
  *
  * Базовый путь: /api/books
  */
 @RestController
 @RequestMapping("/api/books")
 @RequiredArgsConstructor
-@Tag(name = "Книги", description = "API для управления каталогом книг книжного магазина")
+@Tag(name = "Книги", description = "API для управления каталогом книг книжного магазина (JPA / Hibernate)")
 public class BookRestController {
 
     private final BookService bookService;
@@ -36,18 +36,18 @@ public class BookRestController {
     // ──────────────────────────────────────────────────────────────────
     @Operation(
             summary = "Добавить книгу",
-            description = "Создаёт новую запись о книге в каталоге магазина. " +
-                          "Возвращает созданный объект с присвоенным ID."
+            description = "Создаёт новую запись о книге в базе данных. " +
+                          "Возвращает созданный объект DTO с присвоенным ID."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Книга успешно создана",
-                    content = @Content(schema = @Schema(implementation = Book.class))),
+                    content = @Content(schema = @Schema(implementation = BookDto.class))),
             @ApiResponse(responseCode = "400", description = "Некорректные входные данные",
                     content = @Content)
     })
     @PostMapping
-    public ResponseEntity<Book> createBook(@RequestBody Book book) {
-        Book created = bookService.create(book);
+    public ResponseEntity<BookDto> createBook(@RequestBody BookDto bookDto) {
+        BookDto created = bookService.create(bookDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -56,14 +56,14 @@ public class BookRestController {
     // ──────────────────────────────────────────────────────────────────
     @Operation(
             summary = "Получить все книги",
-            description = "Возвращает полный список книг из каталога магазина."
+            description = "Возвращает полный список книг из базы данных магазина."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Список книг успешно получен",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Book.class))))
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = BookDto.class))))
     })
     @GetMapping
-    public ResponseEntity<List<Book>> getAllBooks() {
+    public ResponseEntity<List<BookDto>> getAllBooks() {
         return ResponseEntity.ok(bookService.getAll());
     }
 
@@ -72,16 +72,16 @@ public class BookRestController {
     // ──────────────────────────────────────────────────────────────────
     @Operation(
             summary = "Получить книгу по ID",
-            description = "Возвращает данные конкретной книги по её уникальному идентификатору."
+            description = "Возвращает данные конкретной книги по её уникальному идентификатору из БД."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Книга найдена",
-                    content = @Content(schema = @Schema(implementation = Book.class))),
+                    content = @Content(schema = @Schema(implementation = BookDto.class))),
             @ApiResponse(responseCode = "404", description = "Книга с указанным ID не найдена",
                     content = @Content)
     })
     @GetMapping("/{id}")
-    public ResponseEntity<Book> getBookById(
+    public ResponseEntity<BookDto> getBookById(
             @Parameter(description = "ID книги", example = "1")
             @PathVariable Long id) {
         return bookService.getById(id)
@@ -94,21 +94,20 @@ public class BookRestController {
     // ──────────────────────────────────────────────────────────────────
     @Operation(
             summary = "Обновить книгу",
-            description = "Полностью заменяет данные книги с указанным ID. " +
-                          "Все поля должны быть переданы в теле запроса."
+            description = "Полностью обновляет данные книги с указанным ID в БД через JPA."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Книга успешно обновлена",
-                    content = @Content(schema = @Schema(implementation = Book.class))),
+                    content = @Content(schema = @Schema(implementation = BookDto.class))),
             @ApiResponse(responseCode = "404", description = "Книга с указанным ID не найдена",
                     content = @Content)
     })
     @PutMapping("/{id}")
-    public ResponseEntity<Book> updateBook(
+    public ResponseEntity<BookDto> updateBook(
             @Parameter(description = "ID книги", example = "1")
             @PathVariable Long id,
-            @RequestBody Book book) {
-        return bookService.update(id, book)
+            @RequestBody BookDto bookDto) {
+        return bookService.update(id, bookDto)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -118,7 +117,7 @@ public class BookRestController {
     // ──────────────────────────────────────────────────────────────────
     @Operation(
             summary = "Удалить книгу",
-            description = "Удаляет книгу с указанным ID из каталога магазина."
+            description = "Удаляет книгу с указанным ID из базы данных магазина."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Книга успешно удалена",

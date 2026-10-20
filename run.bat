@@ -45,9 +45,10 @@ if not defined JAVA17 (
 set JAVA_HOME=%JAVA17%
 set PATH=%JAVA_HOME%\bin;%MAVEN_HOME%\bin;%PATH%
 
-echo ============================================
-echo  Книжный магазин — REST API (Лаб. раб. №2)
-echo ============================================
+echo ============================================================
+echo  Книжный магазин — Лабораторные работы №3 и №4
+echo  SSL HTTPS (8443) + Form Login + AngularJS
+echo ============================================================
 echo.
 echo  Java:  %JAVA_HOME%
 echo  Maven: %MAVEN_HOME%
@@ -62,9 +63,15 @@ if errorlevel 1 (
 )
 
 echo.
-echo [Сборка и запуск]
-echo Первый запуск займёт несколько минут (скачиваются зависимости Maven)
-echo После запуска откройте браузер: http://localhost:8080/swagger-ui/index.html
+echo [Сборка и запуск веб-сервера]
+echo Сервер запускается по защищённому протоколу HTTPS на порту 8443:
+echo  - Форма логина:        https://localhost:8443/login
+echo  - Каталог с AngularJS: https://localhost:8443/books
+echo  - Swagger UI:          https://localhost:8443/swagger-ui/index.html
+echo.
+echo Тестовые учётные записи:
+echo  1) user  / password (роль USER  - только чтение)
+echo  2) admin / admin    (роль ADMIN - чтение + запись + аудит)
 echo.
 
 cd /d "%~dp0"

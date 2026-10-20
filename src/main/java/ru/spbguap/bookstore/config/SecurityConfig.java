@@ -41,15 +41,20 @@ public class SecurityConfig {
                 .requestMatchers("/login", "/css/**", "/js/**").permitAll()
                 // GET к REST API — доступен аутентифицированным пользователям
                 .requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/publishers", "/api/publishers/**").authenticated()
                 // Запись (POST/PUT/DELETE) — только ADMIN (защита ресурсов, п.4 задания)
-                .requestMatchers(HttpMethod.POST, "/api/books/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/books/**").hasRole("ADMIN")
-                // Swagger — только для аутентифицированных
+                .requestMatchers(HttpMethod.POST, "/api/books/**", "/api/publishers/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/books/**", "/api/publishers/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/books/**", "/api/publishers/**").hasRole("ADMIN")
+                // Журнал аудита — только ADMIN
+                .requestMatchers("/api/audit/**").hasRole("ADMIN")
+                // Swagger и H2 консоль
                 .requestMatchers("/swagger-ui/**", "/api-docs/**").authenticated()
+                .requestMatchers("/h2-console/**").hasRole("ADMIN")
                 // Главная страница — любой аутентифицированный
                 .anyRequest().authenticated()
             )
+            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             // form-based authentication (методичка стр. 48)
             .formLogin(form -> form
                 .loginPage("/login")           // наша кастомная форма логина
@@ -67,7 +72,7 @@ public class SecurityConfig {
             // CSRF включён (Thymeleaf автоматически добавляет скрытый токен в формы)
             // Для AJAX/AngularJS передаём токен через заголовок (методичка стр. 50)
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**")  // REST API без CSRF (stateless клиенты)
+                .ignoringRequestMatchers("/api/**", "/h2-console/**")  // REST API и H2 без CSRF
             );
 
         return http.build();

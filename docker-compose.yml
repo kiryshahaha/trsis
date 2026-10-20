@@ -1,0 +1,61 @@
+# ==============================================================================
+# Docker Compose спецификация микросервисной системы «Книжный магазин»
+# Лабораторная работа №8: Разработка микросервиса (СПб ГУАП, Кафедра №43)
+# ==============================================================================
+version: "3.9"
+
+services:
+  # ── Сервис СУБД: Реляционная база данных PostgreSQL ──
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookstore-postgres
+    environment:
+      POSTGRES_DB: bookstore
+      POSTGRES_USER: bookstore_user
+      POSTGRES_PASSWORD: bookstore_pass
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - bookstore-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookstore_user -d bookstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Сервис микросервиса: Приложение «Книжный магазин» (Spring Boot) ──
+  bookstore-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookstore-service
+    ports:
+      - "8443:8443"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bookstore
+      SPRING_DATASOURCE_USERNAME: bookstore_user
+      SPRING_DATASOURCE_PASSWORD: bookstore_pass
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_H2_CONSOLE_ENABLED: "false"
+    networks:
+      - bookstore-net
+    restart: unless-stopped
+
+# ── Постоянные дисковые тома для персистентности данных ──
+volumes:
+  pgdata:
+    driver: local
+
+# ── Изолированная виртуальная сеть мост (bridge) ──
+networks:
+  bookstore-net:
+    driver: bridge
